@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+    <defs>
+      <linearGradient id="aiSpark" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#00E5FF"/>
+        <stop offset="50%" stop-color="#7C4DFF"/>
+        <stop offset="100%" stop-color="#FF4081"/>
+      </linearGradient>
+    </defs>
+    <rect width="48" height="48" rx="10" fill="#0f172a"/>
+    <path d="M24 8 C24 16 32 24 40 24 C32 24 24 32 24 40 C24 32 16 24 8 24 C16 24 24 16 24 8 Z" fill="url(#aiSpark)"/>
+  </svg>

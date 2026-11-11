@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AppForge Hub - PC Application Manager & 1-Click Installer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/app-icon.svg">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+  <!-- Background Glow Effects -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    <!-- Header -->
+    <header class="hub-header">
+      <div class="header-branding">
+        <div class="logo-badge">⚡</div>
+        <div class="branding-text">
+          <h1>AppForge <span class="gradient-text">Hub</span></h1>
+          <p class="tagline">Single-Page PC App Detection, Download & Batch Setup Suite</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="install-app-btn" class="btn btn-outline" style="display: none;" title="Install as standalone desktop app">
+          <span class="icon">📲</span>
+          <span>Install App</span>
+        </button>
+        <button id="rescan-btn" class="btn btn-secondary" title="Scan PC again for updated installs">
+          <span class="icon-refresh">↻</span>
+          <span class="btn-text">Rescan PC</span>
+        </button>
+        <button id="quick-ps1-btn" class="btn btn-primary" title="Export batch installer for missing applications">
+          <span class="icon">⚡</span>
+          <span>Install Missing (<span id="missing-count-badge">0</span>)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- System Stats & Overview Bar -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-info">
+          <span class="stat-label">Tracked Applications</span>
+          <span class="stat-value" id="stat-total">--</span>
+        </div>
+      </div>
+      <div class="stat-card installed-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-info">
+          <span class="stat-label">Installed on PC</span>
+          <span class="stat-value text-success" id="stat-installed">--</span>
+        </div>
+      </div>
+      <div class="stat-card missing-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-info">
+          <span class="stat-label">Missing / Pending</span>
+          <span class="stat-value text-danger" id="stat-missing">--</span>
+        </div>
+      </div>
+      <div class="stat-card progress-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-info">
+          <div class="progress-header">
+            <span class="stat-label">PC Setup Readiness</span>
+            <span class="stat-percentage" id="stat-percent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toolbar: Status Filter -->
+    <section class="toolbar-section">
+      <div class="filter-group">
+        <div class="status-pills">
+          <button class="pill active" data-filter="all">All Applications (<span id="pill-count-all">0</span>)</button>
+          <button class="pill" data-filter="installed">Installed (<span id="pill-count-installed">0</span>)</button>
+          <button class="pill" data-filter="missing">Missing (<span id="pill-count-missing">0</span>)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Batch Selection Banner (Sticky when items selected) -->
+    <div class="selection-banner" id="selection-banner" style="display: none;">
+      <div class="selection-info">
+        <label class="custom-checkbox selection-all-label">
+          <input type="checkbox" id="select-all-visible">
+          <span class="checkmark"></span>
+        </label>
+        <span class="selection-count"><strong id="selected-count">0</strong> applications selected</span>
+      </div>
+      <div class="selection-actions">
+        <button class="btn btn-sm btn-ghost" id="select-missing-btn">Select All Missing</button>
+        <button class="btn btn-sm btn-ghost" id="clear-selection-btn">Clear Selection</button>
+        <button class="btn btn-sm btn-outline" id="copy-winget-batch-btn">
+          <span>📋 Copy Winget Command</span>
+        </button>
+        <button class="btn btn-sm btn-primary" id="download-ps1-batch-btn">
+          <span>📥 Download .PS1 Script</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Apps Grid / Container -->
+    <main class="apps-container" id="apps-container">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Scanning Windows Registry, PATH variables, and executables...</p>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="hub-footer">
+      <p>AppForge Hub • Running natively on Windows • Node.js Powered</p>
+      <p class="footer-sub">All downloads point directly to safe, official vendor links and verified Winget sources.</p>
+    </footer>
+  </div>
+
+  <!-- Script Preview / Export Modal -->
+  <div class="modal-overlay" id="script-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>PowerShell Automated Setup Script</h3>
+        <button class="modal-close-btn" id="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle">You can run this PowerShell script to install or open all selected applications unattended:</p>
+        <pre class="code-preview" id="script-preview-code"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="copy-script-btn">📋 Copy Script</button>
+        <button class="btn btn-primary" id="modal-download-ps1-btn">📥 Download install-apps.ps1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
