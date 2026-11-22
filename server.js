@@ -7,9 +7,6 @@ const { exec, spawn } = require('child_process');
 const { scanAllApps } = require('./scanner');
 
 const PORT = process.env.PORT || 4100;
-
-// When packaged by pkg, __dirname points inside the snapshot; public/ is embedded.
-// We also check next to the exe for user-side overrides.
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // In-memory cache of scan results with timestamp
@@ -26,51 +23,39 @@ function getOrUpdateScan(forceRefresh = false) {
   return cachedScan;
 }
 
-// Generate PowerShell installation script for selected app IDs
+// Generate PowerShell script for selected app IDs opening official vendor sites
 function generatePs1Script(appIds = []) {
   const apps = getOrUpdateScan();
   const selected = apps.filter(a => appIds.includes(a.id));
-  
+
   const scriptLines = [
     '# ===============================================================',
-    '# AppForge Hub - Automated Windows Setup Script',
+    '# AppForge Hub - Official Application Setup Script',
     `# Generated: ${new Date().toISOString()}`,
     `# Total Applications: ${selected.length}`,
     '# ===============================================================',
     '',
-    'Write-Host "======================================================" -ForegroundColor Cyan',
-    'Write-Host "   Starting Automated App Installation via Winget   " -ForegroundColor Cyan',
-    'Write-Host "======================================================" -ForegroundColor Cyan',
+    '$ErrorActionPreference = "Continue"',
     '',
-    '# Ensure Winget is available',
-    'if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {',
-    '    Write-Warning "winget (Windows Package Manager) is not detected."',
-    '    Write-Host "Opening direct browser download pages for selected apps instead..." -ForegroundColor Yellow',
-    '}'
+    'Write-Host "======================================================" -ForegroundColor Cyan',
+    'Write-Host "   AppForge Hub - Opening Official Application Sites  " -ForegroundColor Cyan',
+    'Write-Host "======================================================" -ForegroundColor Cyan',
+    `Write-Host "Applications selected: ${selected.length}" -ForegroundColor Yellow`,
+    ''
   ];
 
   selected.forEach(app => {
-    scriptLines.push('');
     scriptLines.push(`Write-Host "------------------------------------------------------" -ForegroundColor DarkGray`);
-    scriptLines.push(`Write-Host "Installing [${app.category}] ${app.name}..." -ForegroundColor White`);
-    
-    if (app.wingetId) {
-      scriptLines.push(`if (Get-Command winget -ErrorAction SilentlyContinue) {`);
-      scriptLines.push(`    Write-Host "Running: winget install --exact --id '${app.wingetId}' --accept-source-agreements --accept-package-agreements" -ForegroundColor Gray`);
-      scriptLines.push(`    winget install --exact --id "${app.wingetId}" --accept-source-agreements --accept-package-agreements --silent`);
-      scriptLines.push(`} else {`);
-      scriptLines.push(`    Start-Process "${app.directInstallerUrl || app.downloadUrl}"`);
-      scriptLines.push(`}`);
-    } else {
-      scriptLines.push(`Start-Process "${app.directInstallerUrl || app.downloadUrl}"`);
-    }
+    scriptLines.push(`Write-Host "Opening official site for [${app.category}] ${app.name}..." -ForegroundColor White`);
+    scriptLines.push(`Start-Process "${app.downloadUrl}"`);
   });
 
   scriptLines.push('');
   scriptLines.push('Write-Host "======================================================" -ForegroundColor Green');
-  scriptLines.push('Write-Host "   All installations and downloads triggered!        " -ForegroundColor Green');
+  scriptLines.push('Write-Host "   All official application pages opened!             " -ForegroundColor Green');
   scriptLines.push('Write-Host "======================================================" -ForegroundColor Green');
-  scriptLines.push('pause');
+  scriptLines.push('Write-Host "Press any key to close this window..."');
+  scriptLines.push('$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")');
 
   return scriptLines.join('\r\n');
 }
@@ -101,6 +86,7 @@ const server = http.createServer((req, res) => {
       total: apps.length,
       installed: apps.filter(a => a.installed).length,
       missing: apps.filter(a => !a.installed).length,
+      updates: apps.filter(a => a.versionStatus === 'update-available').length,
       lastScanTime: new Date(lastScanTime).toLocaleTimeString()
     };
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -115,6 +101,7 @@ const server = http.createServer((req, res) => {
       total: apps.length,
       installed: apps.filter(a => a.installed).length,
       missing: apps.filter(a => !a.installed).length,
+      updates: apps.filter(a => a.versionStatus === 'update-available').length,
       lastScanTime: new Date(lastScanTime).toLocaleTimeString()
     };
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -139,16 +126,14 @@ const server = http.createServer((req, res) => {
         }
 
         if (app.installPath && fs.existsSync(app.installPath)) {
-          // Launch the app
-          const child = spawn(app.installPath, [], { detached: true, stdio: 'ignore' });
+          const child = spawn(app.installPath, [], { detached: true, stdio: 'ignore', windowsHide: true });
           child.unref();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, message: `Launched ${app.name} successfully!` }));
         } else {
-          // Try launching via default shell command
           const cmd = app.cliCommands && app.cliCommands[0] ? app.cliCommands[0] : null;
           if (cmd) {
-            exec(`start "" "${cmd}"`);
+            exec(`start "" "${cmd}"`, { windowsHide: true });
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, message: `Launched ${app.name} via command.` }));
           } else {
@@ -200,7 +185,6 @@ const server = http.createServer((req, res) => {
   // ----------------------------------------------------
   let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
 
-  // Security check: ensure path is within PUBLIC_DIR
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
     res.end('Access denied');
@@ -238,14 +222,14 @@ server.listen(PORT, () => {
   console.log(`   🌐 Dashboard: ${url}             `);
   console.log(`======================================================\n`);
 
-  // Auto-open browser when launched as a standalone exe
-  const { platform } = process;
-  const edgePath = `C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe`;
-  const openCmd = fs.existsSync(edgePath)
-    ? `"${edgePath}" --app="${url}"`
-    : `start ${url}`;
+  if (process.argv.includes('--open')) {
+    const edgePath = `C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe`;
+    const openCmd = fs.existsSync(edgePath)
+      ? `"${edgePath}" --app="${url}" --window-size=1260,840`
+      : `start ${url}`;
 
-  exec(openCmd, (err) => {
-    if (err) exec(`start ${url}`);
-  });
+    exec(openCmd, { windowsHide: true }, (err) => {
+      if (err) exec(`start ${url}`, { windowsHide: true });
+    });
+  }
 });

@@ -1,21 +1,20 @@
 {
   "name": "appforge-hub",
-  "version": "1.0.0",
-  "description": "Single-page PC application installer, downloader and live system detection dashboard",
+  "version": "2.0.0",
+  "description": "Fixed-frame desktop PC application manager, detector, and official vendor setup dashboard",
   "main": "server.js",
   "bin": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "pkg . --targets node18-win-x64 --output dist/AppForge-Hub.exe --compress GZip"
+    "build": "powershell -ExecutionPolicy Bypass -File ./build.ps1"
   },
-  "pkg": {
-    "targets": ["node18-win-x64"],
-    "outputPath": "dist",
-    "assets": [
-      "public/**/*"
-    ]
-  },
-  "keywords": ["installer", "apps", "winget", "pc-management", "dashboard"],
+  "keywords": [
+    "installer",
+    "apps",
+    "pc-management",
+    "dashboard",
+    "desktop-app"
+  ],
   "author": "",
   "license": "MIT"
 }

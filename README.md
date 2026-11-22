@@ -1,127 +1,96 @@
-# ⚡ AppForge Hub - PC Application Manager & 1-Click Setup Suite
+# ⚡ AppForge Hub
 
-A modern, high-performance local web application that scans your Windows PC to detect installed applications and versions, and lets you download the latest releases, copy silent Winget commands, or export automated 1-click batch installation scripts from a single unified dashboard.
+> A sleek, modern Windows PC application manager — scan installed apps, check versions, and jump to official download pages in one click.
 
----
-
-## 🌟 Key Features
-
-1. **Live System Detection**:
-   - Queries Windows 32-bit & 64-bit Registry hives (`HKLM`, `HKCU`, `Wow6432Node`).
-   - Checks environment `PATH` binaries using native CLI detection (`where.exe`).
-   - Integrates with Microsoft's `vswhere.exe` for precise Visual Studio Community/Enterprise detection.
-   - Accurately filters out 0-byte Microsoft Store execution shims (e.g. placeholder Python shims).
-   - Reports exact installed versions and install paths in real-time.
-
-2. **One-Click Downloads**:
-   - Direct download links to latest official vendor installers.
-   - Winget CLI installation commands (`winget install --id ...`).
-
-3. **Automated Batch Setup**:
-   - **Select All Missing**: One click highlights every application currently missing on your PC.
-   - **Download `.ps1` Setup Script**: Generates an automated PowerShell script to install or open all selected applications unattended.
-   - **Copy Winget Batch Command**: Copies a single combined command to install all selected apps.
-
-4. **1-Click Launching**:
-   - Launch any detected installed tool (e.g. VS Code, Git, VLC, Visual Studio) directly from your browser.
+![AppForge Hub](public/icons/app-icon.svg)
 
 ---
 
-## 🚀 Single-Click Desktop Web App
+## ✨ Features
 
-### 1. From Your Desktop (Instant 1-Click)
-A shortcut named **"AppForge Hub"** has been created on your Windows Desktop:
-- Double-click **`AppForge Hub`** on your Desktop.
-- It will automatically ensure the local backend is running and launch in **Standalone App Window Mode** (no browser URL bar or tabs, clean native desktop window).
-
-### 2. Browser PWA (Progressive Web App)
-- When visiting `http://localhost:4100` in Edge or Chrome, click the **"Install App"** button in the top bar or click the install icon (🖥️) in your browser address bar.
-- It will pin to your Windows Start Menu and Taskbar like any native application.
+- **Live System Scanner** — detects installed apps from Windows Registry (HKLM/HKCU, 32-bit & 64-bit) and known executable paths
+- **Latest Version Display** — shows the latest known version for every tracked app
+- **Status Detection** — instantly see what's Installed, Missing, or has an Update available
+- **Official Download Links** — one click opens the app's official website (no shady direct links)
+- **Install Missing Apps** — export a PowerShell script to open download pages for all missing apps
+- **Zero Terminal Windows** — launches silently with no visible CMD/PowerShell popup
+- **Full-Screen App Mode** — runs in Edge `--app` mode, edge-to-edge, no browser chrome
+- **30 Tracked Apps** — across 5 categories: Dev Tools, AI & Productivity, Browsers, Media & Design, Utilities
 
 ---
 
-## 🚀 Alternative Launch Methods
+## 🗂️ Tracked Categories
 
-### Option 1: One-Click Windows Launcher
-Double-click [`start.bat`](file:///C:/Users/hario/.gemini/antigravity/scratch/app-hub/start.bat) inside the project folder.
+| Category | Apps |
+|---|---|
+| 🛠️ Development Tools | VS Code, Git, Node.js, Python, Windows Terminal, Docker, Postman, 7-Zip, OpenCode |
+| 🤖 AI & Productivity | ChatGPT, Notion, Obsidian, Slack, Discord, Zoom, Microsoft Teams |
+| 🌐 Browsers | Google Chrome, Mozilla Firefox, Microsoft Edge, Brave |
+| 🎨 Media & Design | Figma, VLC Media Player, OBS Studio, GIMP, Spotify |
+| 🔧 Utilities | Everything Search, PowerToys, TreeSize Free, Wireshark |
 
-### Option 2: Command Line
-```powershell
+---
+
+## 🚀 Getting Started
+
+### Option A — Double-click the EXE (Recommended)
+1. Download `AppForge-Hub.exe` from [Releases](../../releases)
+2. Double-click it — it starts the local server and opens the app in Edge automatically
+
+### Option B — Run from Source
+**Requirements**: Node.js 18+
+
+```bash
+git clone https://github.com/Harry2210/AppForge-Hub.git
+cd AppForge-Hub
 node server.js
 ```
-Then visit:
-```
-http://localhost:4100
-```
+Then open `http://localhost:4100` in your browser.
 
 ---
 
-## 📦 Tracked Application Inventory
-
-### 🧑‍💻 Development Tools
-- **Visual Studio Code** — Fast, versatile code editor (`Microsoft.VisualStudioCode`)
-- **Visual Studio** — Microsoft full-featured IDE for C++, .NET, and cloud apps
-- **Android Studio** — Google's official Android development IDE (`Google.AndroidStudio`)
-- **Antigravity IDE** — Next-gen AI-assisted agentic developer IDE
-- **Git** — Distributed version control system (`Git.Git`)
-- **Postman API Platform** — Industry-standard API design & testing suite (`Postman.Postman`)
-- **Inno Setup** — Professional Windows installer packaging tool (`JRSoftware.InnoSetup`)
-- **XAMPP** — Local web server stack containing Apache, MariaDB, PHP, and Perl (`ApacheFriends.Xampp`)
-
-### 🐳 Containers & DevOps
-- **Docker Desktop** — Containerization engine & Kubernetes cluster (`Docker.DockerDesktop`)
-
-### 🗄️ Database Management
-- **DBeaver Community** — Universal SQL & NoSQL database client (`dbeaver.dbeaver`)
-
-### 💻 Programming Languages & SDKs
-- **.NET SDK** — Microsoft .NET development platform & runtime (`Microsoft.DotNet.SDK.8`)
-- **Go Programming Language** — Google's compiled concurrent language (`GoLang.Go`)
-- **Java JDK** — Temurin / Oracle OpenJDK developer kit (`EclipseAdoptium.Temurin.21.JDK`)
-- **Node.js** — Fast JavaScript runtime on Chrome V8 (`OpenJS.NodeJS`)
-- **Python** — General-purpose programming language (`Python.Python.3.12`)
-- **MSYS2 (C/C++ Compiler)** — MinGW-w64 & GCC native toolchain for Windows (`MSYS2.MSYS2`)
-
-### 🔧 Development Dependencies
-- **Microsoft Visual C++ Redistributable** — Core runtime DLLs for C++ applications (`Microsoft.VCRedist.2015+.x64`)
-
-### 📁 File Management & Transfer
-- **7-Zip** — High-compression file archiver (`7zip.7zip`)
-- **FileZilla Client** — Fast FTP, FTPS, and SFTP file transfer client (`TimKosse.FileZilla.Client`)
-
-### 🛠️ Utilities & Management
-- **Revo Uninstaller Pro** — Deep uninstaller for leftover traces & registries (`VSRevoGroup.RevoUninstallerPro`)
-- **IDM (Internet Download Manager)** — High-speed download accelerator (`Tonec.InternetDownloadManager`)
-- **Wondershare PDFelement** — PDF editor, OCR, and document manager (`Wondershare.PDFelement`)
-- **Wondershare Filmora** — Feature-packed video editing application (`Wondershare.Filmora`)
-
-### 🤖 AI & Productivity
-- **Microsoft Copilot / GitHub Copilot** — AI pair programmer & Windows productivity companion
-- **Antigravity AI Agent** — Google DeepMind advanced agentic coding assistant
-- **Codex** — AI developer companion (`9PLM9XGG6VKS`)
-- **Claude Desktop** — Anthropic's native desktop application (`Anthropic.Claude`)
-
-### 🎮 Gaming
-- **Epic Games Launcher** — Storefront and engine launcher (`EpicGames.EpicGamesLauncher`)
-- **Steam** — Valve's premier PC video gaming platform (`Valve.Steam`)
-
-### 🎬 Media
-- **VLC Media Player** — Universal multimedia playback suite (`VideoLAN.VLC`)
-
----
-
-## 📁 Project Architecture
+## 🏗️ Project Structure
 
 ```
-app-hub/
+AppForge-Hub/
+├── server.js          # Express server (port 4100)
+├── scanner.js         # Windows app detection engine
+├── apps-data.js       # App catalog (30 apps, latest versions, official URLs)
+├── Launcher.cs        # C# source for native .exe launcher
+├── build.ps1          # Build script → compiles Launcher.cs + packages release
+├── app-icon.ico       # App icon (multi-res: 16–256px)
 ├── public/
-│   ├── index.html        # Modern responsive single-page dashboard
-│   ├── style.css         # Glassmorphic dark theme & animations
-│   └── app.js            # Frontend reactive engine, filters & batch actions
-├── apps-data.js          # Central registry & detection patterns for all apps
-├── scanner.js            # Deep system inspection engine (Registry, PATH, VSWhere)
-├── server.js             # Zero-dependency Node.js HTTP & REST API server
-├── start.bat             # One-click Windows startup batch script
-├── package.json          # Package manifest
-└── README.md             # Documentation
+│   ├── index.html     # App UI
+│   ├── style.css      # Dark glass-morphism UI styles
+│   └── app.js         # Frontend logic
 ```
+
+`build.ps1` generates the root launcher and the `dist/` release package; these generated files are not included in the source repository.
+
+---
+
+## 🔨 Building from Source
+
+Requires `.NET Framework 4` (pre-installed on Windows 10/11):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+This compiles `Launcher.cs` → `AppForge-Hub.exe` with the embedded icon and packages a portable release zip.
+
+---
+
+## 📋 How the Scanner Works
+
+1. Queries `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall` (64-bit + 32-bit)
+2. Queries `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`
+3. Checks known executable paths (e.g. `%LOCALAPPDATA%\Programs\...`)
+4. Compares found version against the tracked `latestVersion` for each app
+5. Returns status: `latest` | `update-available` | `installed` | `missing`
+
+---
+
+## 📄 License
+
+MIT — free to use, modify, and distribute.
