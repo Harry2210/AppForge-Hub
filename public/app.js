@@ -1,4 +1,11 @@
-// app.js - Client-side state and interactivity for AppForge Hub
+// app.js - Client-side state and interactivity for AppForge Hub Fixed Frame Desktop Edition
+
+// Enforce fixed desktop frame size if in popup / app mode
+if (window.resizeTo) {
+  try {
+    window.resizeTo(1260, 840);
+  } catch (e) {}
+}
 
 let allApps = [];
 let selectedAppIds = new Set();
@@ -13,8 +20,11 @@ const missingCountBadge = document.getElementById('missing-count-badge');
 const statTotal = document.getElementById('stat-total');
 const statInstalled = document.getElementById('stat-installed');
 const statMissing = document.getElementById('stat-missing');
+const statUpdates = document.getElementById('stat-updates');
+const statPillUpdates = document.getElementById('stat-pill-updates');
 const statPercent = document.getElementById('stat-percent');
 const progressFill = document.getElementById('progress-fill');
+const statusbarTime = document.getElementById('statusbar-time');
 
 const pillCountAll = document.getElementById('pill-count-all');
 const pillCountInstalled = document.getElementById('pill-count-installed');
@@ -25,7 +35,7 @@ const selectedCountEl = document.getElementById('selected-count');
 const selectAllVisibleCb = document.getElementById('select-all-visible');
 const selectMissingBtn = document.getElementById('select-missing-btn');
 const clearSelectionBtn = document.getElementById('clear-selection-btn');
-const copyWingetBatchBtn = document.getElementById('copy-winget-batch-btn');
+const openAllDownloadsBtn = document.getElementById('open-all-downloads-btn');
 const downloadPs1BatchBtn = document.getElementById('download-ps1-batch-btn');
 
 const scriptModal = document.getElementById('script-modal');
@@ -45,13 +55,13 @@ function showToast(message, type = 'info') {
 
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
+    toast.style.transform = 'translateY(8px)';
     toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  }, 3200);
 }
 
-// Fetch Initial Apps Data
+// Fetch Apps Data
 async function loadApps(forceRefresh = false) {
   try {
     if (forceRefresh) {
@@ -70,8 +80,12 @@ async function loadApps(forceRefresh = false) {
     updateStats(data.stats);
     renderApps();
 
+    if (data.stats.lastScanTime) {
+      statusbarTime.textContent = `Last scan: ${data.stats.lastScanTime}`;
+    }
+
     if (forceRefresh) {
-      showToast('PC application scan completed successfully!', 'success');
+      showToast('System application scan refreshed successfully!', 'success');
     }
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
@@ -83,12 +97,19 @@ async function loadApps(forceRefresh = false) {
   }
 }
 
-// Update Top Stat Counters
+// Update Stats
 function updateStats(stats) {
   statTotal.textContent = stats.total;
   statInstalled.textContent = stats.installed;
   statMissing.textContent = stats.missing;
   missingCountBadge.textContent = stats.missing;
+
+  if (stats.updates && stats.updates > 0) {
+    statUpdates.textContent = stats.updates;
+    statPillUpdates.style.display = 'flex';
+  } else {
+    statPillUpdates.style.display = 'none';
+  }
 
   const percent = stats.total > 0 ? Math.round((stats.installed / stats.total) * 100) : 0;
   statPercent.textContent = `${percent}%`;
@@ -99,7 +120,7 @@ function updateStats(stats) {
   pillCountMissing.textContent = stats.missing;
 }
 
-// Render Filtered & Grouped Cards
+// Filter and Render Cards
 function renderApps() {
   const filtered = allApps.filter(app => {
     // Status Filter
@@ -111,9 +132,9 @@ function renderApps() {
   if (filtered.length === 0) {
     appsContainer.innerHTML = `
       <div class="empty-state">
-        <p style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</p>
-        <h3>No matching applications found</h3>
-        <p>Try adjusting your search query or switching active filters.</p>
+        <p style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔍</p>
+        <h3 style="font-size: 1.1rem; color: #f8fafc; margin-bottom: 0.4rem;">No matching applications found</h3>
+        <p style="font-size: 0.82rem;">Try adjusting your search terms or clearing active filters.</p>
       </div>
     `;
     updateSelectionBanner();
@@ -148,17 +169,45 @@ function renderApps() {
   updateSelectionBanner();
 }
 
-// Render a single app card
+// Render a single app card (Displays official website link on Download button)
 function renderAppCard(app) {
   const isSelected = selectedAppIds.has(app.id);
-  const statusBadge = app.installed
-    ? `<span class="status-badge badge-installed" title="Detected via ${app.detectionSource}">
-         <span class="status-dot"></span> Installed ${app.version ? `(${app.version})` : ''}
-       </span>`
-    : `<span class="status-badge badge-missing">
-         <span class="status-dot"></span> Not Installed
-       </span>`;
 
+  // Status & Version Badges
+  let statusBadgeHtml = '';
+  let cardClassExtra = '';
+
+  if (app.installed) {
+    if (app.versionStatus === 'latest' || app.versionStatus === 'installed') {
+      statusBadgeHtml = `
+        <span class="status-badge badge-installed" title="Installed on PC">
+          <span class="status-dot"></span> Up to date (${app.installedVersion || 'Detected'})
+        </span>
+      `;
+      cardClassExtra = 'is-installed';
+    } else if (app.versionStatus === 'update-available') {
+      statusBadgeHtml = `
+        <span class="status-badge badge-update" title="Update available: v${app.latestVersion}">
+          <span class="status-dot"></span> Update to v${app.latestVersion} (Have: ${app.installedVersion})
+        </span>
+      `;
+      cardClassExtra = 'is-installed has-update';
+    }
+  } else {
+    statusBadgeHtml = `
+      <span class="status-badge badge-missing">
+        <span class="status-dot"></span> Not Installed
+      </span>
+    `;
+    cardClassExtra = 'is-missing';
+  }
+
+  // Latest Version Pill
+  const latestPill = app.latestVersion
+    ? `<span class="badge-latest-pill" title="Official latest release version">⚡ Latest: v${app.latestVersion}</span>`
+    : '';
+
+  // Install Path (if installed)
   const pathDisplay = app.installPath
     ? `<div class="detail-item" title="${app.installPath}">
          <span class="detail-label">Path:</span>
@@ -166,21 +215,18 @@ function renderAppCard(app) {
        </div>`
     : '';
 
-  const wingetDisplay = app.wingetId
-    ? `<div class="detail-item" title="winget install ${app.wingetId}">
-         <span class="detail-label">Winget:</span>
-         <span class="detail-value">${app.wingetId}</span>
-       </div>`
-    : '';
-
+  // Launch button (if installed)
   const launchBtn = app.installed
     ? `<button class="btn btn-sm action-btn-success launch-btn" data-id="${app.id}" title="Launch ${app.name} on this PC">
          <span>🚀 Launch</span>
        </button>`
     : '';
 
+  // Always point to official vendor website
+  const officialSiteUrl = app.downloadUrl;
+
   return `
-    <div class="app-card ${app.installed ? 'is-installed' : 'is-missing'}" data-id="${app.id}">
+    <div class="app-card ${cardClassExtra}" data-id="${app.id}">
       <div class="card-top">
         <label class="custom-checkbox card-select">
           <input type="checkbox" class="app-select-cb" data-id="${app.id}" ${isSelected ? 'checked' : ''}>
@@ -188,11 +234,14 @@ function renderAppCard(app) {
         </label>
         <div class="app-icon">
           <img src="${app.icon}" class="app-icon-img" alt="${app.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
-          <span class="app-icon-fallback" style="display:none;">⚡</span>
+          <span class="app-icon-fallback" style="display:none; font-size: 1.2rem;">⚡</span>
         </div>
         <div class="card-title-group">
           <h3 class="app-name" title="${app.name}">${app.name}</h3>
-          ${statusBadge}
+          <div class="card-badges-row">
+            ${latestPill}
+            ${statusBadgeHtml}
+          </div>
         </div>
       </div>
 
@@ -200,19 +249,13 @@ function renderAppCard(app) {
         <p class="app-desc">${app.description}</p>
         <div class="details-row">
           ${pathDisplay}
-          ${wingetDisplay}
         </div>
       </div>
 
       <div class="card-actions">
-        <a href="${app.directInstallerUrl || app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm action-btn-primary" title="Download latest installer from official source">
-          <span>📥 Download Latest</span>
+        <a href="${officialSiteUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm action-btn-primary" title="Open official website for ${app.name}">
+          <span>📥 Download</span>
         </a>
-        ${app.wingetId ? `
-          <button class="btn btn-sm btn-outline copy-cmd-btn" data-winget="${app.wingetId}" title="Copy silent install command">
-            <span>📋 Winget</span>
-          </button>
-        ` : ''}
         ${launchBtn}
       </div>
     </div>
@@ -234,47 +277,33 @@ function attachCardEvents() {
     });
   });
 
-  // Copy Winget command
-  document.querySelectorAll('.copy-cmd-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const wingetId = btn.dataset.winget;
-      const cmd = `winget install --exact --id "${wingetId}" --accept-source-agreements --accept-package-agreements`;
-      navigator.clipboard.writeText(cmd).then(() => {
-        showToast(`Copied command for ${wingetId}`, 'success');
-      });
-    });
-  });
-
-  // Launch App
+  // Launch App Button
   document.querySelectorAll('.launch-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      const app = allApps.find(a => a.id === id);
+      const appId = btn.dataset.id;
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳ Launching...</span>`;
+
       try {
-        btn.disabled = true;
-        btn.innerHTML = '<span>⏳ Opening...</span>';
         const res = await fetch('/api/launch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ appId: id })
+          body: JSON.stringify({ appId })
         });
         const data = await res.json();
-        if (data.success) {
-          showToast(`Launched ${app ? app.name : 'App'}!`, 'success');
-        } else {
-          showToast(`Launch failed: ${data.error}`, 'error');
-        }
+        if (!data.success) throw new Error(data.error);
+        showToast(data.message, 'success');
       } catch (err) {
-        showToast(`Error: ${err.message}`, 'error');
+        showToast(`Launch failed: ${err.message}`, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>🚀 Launch</span>';
+        btn.innerHTML = `<span>🚀 Launch</span>`;
       }
     });
   });
 }
 
-// Update Sticky Batch Selection Banner
+// Update Batch Selection Banner
 function updateSelectionBanner() {
   const count = selectedAppIds.size;
   selectedCountEl.textContent = count;
@@ -285,7 +314,7 @@ function updateSelectionBanner() {
     selectionBanner.style.display = 'none';
   }
 
-  // Sync "Select All Visible" checkbox state
+  // Check state of select all visible
   const visibleCbs = document.querySelectorAll('.app-select-cb');
   if (visibleCbs.length > 0) {
     const allChecked = Array.from(visibleCbs).every(cb => cb.checked);
@@ -293,7 +322,7 @@ function updateSelectionBanner() {
   }
 }
 
-// Status Pills (All / Installed / Missing)
+// Status Filter Pills
 document.querySelectorAll('.status-pills .pill').forEach(pill => {
   pill.addEventListener('click', () => {
     document.querySelectorAll('.status-pills .pill').forEach(p => p.classList.remove('active'));
@@ -304,7 +333,21 @@ document.querySelectorAll('.status-pills .pill').forEach(pill => {
 });
 
 // Rescan Button
-rescanBtn.addEventListener('click', () => loadApps(true));
+rescanBtn.addEventListener('click', () => {
+  loadApps(true);
+});
+
+// Quick Open Missing
+quickPs1Btn.addEventListener('click', async () => {
+  const missingApps = allApps.filter(a => !a.installed);
+  if (missingApps.length === 0) {
+    showToast('All tracked applications are already installed!', 'success');
+    return;
+  }
+
+  const appIds = missingApps.map(a => a.id);
+  await openScriptModal(appIds);
+});
 
 // Select All Visible
 selectAllVisibleCb.addEventListener('change', (e) => {
@@ -312,18 +355,21 @@ selectAllVisibleCb.addEventListener('change', (e) => {
   document.querySelectorAll('.app-select-cb').forEach(cb => {
     cb.checked = checked;
     const id = cb.dataset.id;
-    if (checked) selectedAppIds.add(id);
-    else selectedAppIds.delete(id);
+    if (checked) {
+      selectedAppIds.add(id);
+    } else {
+      selectedAppIds.delete(id);
+    }
   });
   updateSelectionBanner();
 });
 
 // Select All Missing
 selectMissingBtn.addEventListener('click', () => {
-  selectedAppIds.clear();
-  allApps.filter(a => !a.installed).forEach(a => selectedAppIds.add(a.id));
+  const missingApps = allApps.filter(a => !a.installed);
+  missingApps.forEach(a => selectedAppIds.add(a.id));
   renderApps();
-  showToast(`Selected all ${selectedAppIds.size} missing applications`, 'info');
+  showToast(`Selected ${missingApps.length} missing applications`, 'info');
 });
 
 // Clear Selection
@@ -332,111 +378,71 @@ clearSelectionBtn.addEventListener('click', () => {
   renderApps();
 });
 
-// Copy Winget Batch Command
-copyWingetBatchBtn.addEventListener('click', () => {
-  const selected = allApps.filter(a => selectedAppIds.has(a.id) && a.wingetId);
-  if (selected.length === 0) {
-    showToast('No selected apps have Winget IDs', 'error');
-    return;
-  }
-  const ids = selected.map(a => a.wingetId).join(' ');
-  const batchCmd = `winget install ${ids} --accept-source-agreements --accept-package-agreements`;
-  navigator.clipboard.writeText(batchCmd).then(() => {
-    showToast(`Copied batch command for ${selected.length} apps!`, 'success');
+// Open All Selected Downloads (Official Websites)
+openAllDownloadsBtn.addEventListener('click', () => {
+  const selected = allApps.filter(a => selectedAppIds.has(a.id));
+  if (selected.length === 0) return;
+
+  selected.forEach(app => {
+    window.open(app.downloadUrl, '_blank');
   });
+
+  showToast(`Opened official websites for ${selected.length} apps`, 'success');
 });
 
-// Download .PS1 Batch Script
+// Download Batch .PS1 Script
 downloadPs1BatchBtn.addEventListener('click', () => {
-  if (selectedAppIds.size === 0) {
-    showToast('Please select at least one application', 'error');
-    return;
-  }
+  if (selectedAppIds.size === 0) return;
   const ids = Array.from(selectedAppIds).join(',');
   window.location.href = `/api/download-script?ids=${encodeURIComponent(ids)}`;
-  showToast('Downloading PowerShell install script...', 'success');
+  showToast('Downloaded install-apps.ps1 script', 'success');
 });
 
-// Quick Header "Install Missing" Button
-quickPs1Btn.addEventListener('click', async () => {
-  const missingApps = allApps.filter(a => !a.installed);
-  if (missingApps.length === 0) {
-    showToast('All tracked applications are already installed on this PC! 🎉', 'success');
-    return;
-  }
-
-  // Pre-select missing apps
-  selectedAppIds.clear();
-  missingApps.forEach(a => selectedAppIds.add(a.id));
-  renderApps();
-
-  // Fetch and display script in preview modal
+// Script Modal
+async function openScriptModal(appIds) {
   try {
     const res = await fetch('/api/generate-script', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appIds: missingApps.map(a => a.id) })
+      body: JSON.stringify({ appIds })
     });
     const data = await res.json();
-    if (data.success) {
-      scriptPreviewCode.textContent = data.script;
-      scriptModal.style.display = 'flex';
-    }
-  } catch (err) {
-    showToast(`Failed to generate script: ${err.message}`, 'error');
-  }
-});
+    if (!data.success) throw new Error(data.error);
 
-// Close Modal
+    scriptPreviewCode.textContent = data.script;
+    scriptModal.dataset.ids = appIds.join(',');
+    scriptModal.style.display = 'flex';
+  } catch (err) {
+    showToast(`Error generating setup script: ${err.message}`, 'error');
+  }
+}
+
 closeModalBtn.addEventListener('click', () => {
   scriptModal.style.display = 'none';
 });
 
-// Copy Modal Script
+scriptModal.addEventListener('click', (e) => {
+  if (e.target === scriptModal) scriptModal.style.display = 'none';
+});
+
 copyScriptBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(scriptPreviewCode.textContent).then(() => {
-    showToast('PowerShell script copied to clipboard!', 'success');
+    showToast('Setup script copied to clipboard!', 'success');
   });
 });
 
-// Modal Download .PS1
 modalDownloadPs1Btn.addEventListener('click', () => {
-  const ids = Array.from(selectedAppIds).join(',');
+  const ids = scriptModal.dataset.ids || '';
   window.location.href = `/api/download-script?ids=${encodeURIComponent(ids)}`;
-  scriptModal.style.display = 'none';
-  showToast('Downloading install-apps.ps1...', 'success');
+  showToast('Downloaded install-apps.ps1 script', 'success');
 });
 
-// Close Modal on backdrop click
-window.addEventListener('click', (e) => {
-  if (e.target === scriptModal) {
-    scriptModal.style.display = 'none';
+// Window Decorative Dots Interaction
+document.querySelector('.dot-close')?.addEventListener('click', () => {
+  if (window.confirm('Close AppForge Hub?')) {
+    window.close();
   }
 });
-
-// PWA Installation
-let deferredPrompt = null;
-const installAppBtn = document.getElementById('install-app-btn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installAppBtn) installAppBtn.style.display = 'inline-flex';
-});
-
-if (installAppBtn) {
-  installAppBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        showToast('App installed successfully to your Windows PC!', 'success');
-      }
-      deferredPrompt = null;
-      installAppBtn.style.display = 'none';
-    }
-  });
-}
 
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
